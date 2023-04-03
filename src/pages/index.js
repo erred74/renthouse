@@ -4,13 +4,15 @@ import { Inter } from 'next/font/google'
 import Link from "next/link";
 import { gql } from "@apollo/client";
 import { getApolloClient } from "../lib/apollo-client";
-import styles from '@/styles/Home.module.css'
+import React, { useState } from "react";
 import FormValidation from '@/components/Form';
 
 const inter = Inter({ subsets: ['latin'] })
 
 export default function Home({ page, posts }) {
   const { title, description } = page;
+  const [selectedCategory, setSelectedCategory] = useState("Any");
+  const filteredPosts = selectedCategory === "Any" ? posts : posts.filter(post => post.categories.edges[0].node.name === selectedCategory);
   return (
     <>
       <Head>
@@ -20,13 +22,36 @@ export default function Home({ page, posts }) {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className="">
+        <form>
+          <label>
+            Select Movie Genre:
+            <select
+              value={selectedCategory}
+              onChange={(event) => setSelectedCategory(event.target.value)}
+            >
+              <option value="Any">Any</option>
+              {posts && posts.length > 0 && (
+                <>
+                  {posts.map((post) => (
+                    post.categories.edges.map((category) => (
+                      <option key={category.node.name} value={category.node.name}>
+                        {category.node.name}
+                      </option>
+                    ))
+                  ))}
+                </>
+              )}
+            </select>
+          </label>
+        </form>
         <ul className="">
-          {posts &&
-            posts.length > 0 &&
-            posts.map((post) => {
+          {filteredPosts &&
+            filteredPosts.length > 0 &&
+            filteredPosts.map((post) => {
               return (
                 <li key={post.slug} className="">
                   <Link href={post.path}>
+                    <Image src={post.featuredImage.node.sourceUrl} alt={post.title} width={1920} height={1080} />
                     <h3
                       dangerouslySetInnerHTML={{
                         __html: post.title,
@@ -38,13 +63,14 @@ export default function Home({ page, posts }) {
                         __html: post.excerpt,
                       }}
                     />
+                    <div>{post.categories.edges[0].node.name}</div>
                   </Link>
                 </li>
               );
             })}
 
-          {!posts ||
-            (posts.length === 0 && (
+            {!filteredPosts ||
+            (filteredPosts.length === 0 && (
               <li>
                 <p>Oops, no posts found!</p>
               </li>
@@ -63,14 +89,26 @@ export async function getStaticProps({ locale }) {
 
   const data = await apolloClient.query({
     query: gql`
-      query posts($language: LanguageCodeFilterEnum!) {
-        posts(where: { language: $language }, first:2) {
+      query posts($language: LanguageCodeFilterEnum!, $selectedCategory: String!) {
+        posts(where: { language: $language, categoryName: $selectedCategory }, first:2) {
           edges {
             node {
               id
               excerpt
               title
               slug
+              featuredImage {
+                node {
+                  sourceUrl
+                }
+              }
+              categories {
+                edges {
+                  node {
+                    name
+                  }
+                }
+              }
               language {
                 code
                 locale
@@ -86,6 +124,7 @@ export async function getStaticProps({ locale }) {
     `,
     variables: {
       language,
+      selectedCategory: ""
     },
   });
 

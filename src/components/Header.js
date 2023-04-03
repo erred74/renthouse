@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 
-export default function Navbar() {
+export default function Header() {
   const { locale: activeLocale, locales, asPath } = useRouter();
 
   const availableLocales = locales.filter((locale) => locale !== activeLocale);
